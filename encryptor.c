@@ -13,12 +13,10 @@
 #define BLOCK_SIZE 16
 
 
-static void print_hex(unsigned char *, size_t);
 static void usage(void);
+static void print_hex(unsigned char *, size_t);
+static void check_args(char *, char *, unsigned char *, int, int);
 
-void check_args(char *, char *, unsigned char *, int, int);
-void encrypt(unsigned char *, int, unsigned char *, unsigned char *, 
-    unsigned char *, int );
 int decrypt(unsigned char *, int, unsigned char *, unsigned char *, 
     unsigned char *, int);
 void gen_cmac(unsigned char *, size_t, unsigned char *, unsigned char *, int);
@@ -46,28 +44,28 @@ static void print_hex(unsigned char *data, size_t len)
 
 static void usage(void)
 {
-	printf(
-	    "\n"
-	    "Usage:\n"
-	    "    assign_1 -i in_file -o out_file -p passwd -b bits" 
-	        " [-d | -e | -s | -v]\n"
-	    "    assign_1 -h\n"
-	);
-	printf(
-	    "\n"
-	    "Options:\n"
-	    " -i    path    Path to input file\n"
-	    " -o    path    Path to output file\n"
-	    " -p    psswd   Password for key generation\n"
-	    " -b    bits    Bit mode (128 or 256 only)\n"
-	    " -d            Decrypt input and store results to output\n"
-	    " -e            Encrypt input and store results to output\n"
-	    " -s            Encrypt+sign input and store results to output\n"
-	    " -v            Decrypt+verify input and store results to output\n"
-	    " -h            This help message\n"
-	    "\n"
-	);
-	exit(EXIT_FAILURE);
+    printf(
+            "\n"
+            "Usage:\n"
+            "    encryptor -i in_file -o out_file -p passwd -b bits" 
+            " [-d | -e | -s | -v]\n"
+            "    encryptor -h\n"
+          );
+    printf(
+            "\n"
+            "Options:\n"
+            " -i    path    Path to input file\n"
+            " -o    path    Path to output file\n"
+            " -p    psswd   Password for key generation\n"
+            " -b    bits    Bit mode (128 or 256 only)\n"
+            " -d            Decrypt input and store results to output\n"
+            " -e            Encrypt input and store results to output\n"
+            " -s            Encrypt+sign input and store results to output\n"
+            " -v            Decrypt+verify input and store results to output\n"
+            " -h            This help message\n"
+            "\n"
+          );
+    exit(EXIT_FAILURE);
 }
 
 
@@ -75,9 +73,8 @@ static void usage(void)
  * Checks the validity of the arguments
  * Check the new arguments you introduce
  */
-void
-check_args(char *input_file, char *output_file, unsigned char *password, 
-    int bit_mode, int op_mode)
+static void check_args(char *input_file, char *output_file,
+        unsigned char *password, int bit_mode, int op_mode)
 {
 	if (!input_file) {
 		printf("Error: No input file!\n");
@@ -134,72 +131,48 @@ int keygen(unsigned char *password,
 }
 
 
-/*
- * Encrypts the data
- */
-void
-encrypt(unsigned char *plaintext, int plaintext_len, unsigned char *key,
-    unsigned char *iv, unsigned char *ciphertext, int bit_mode)
+int encrypt(unsigned char *plaintext,
+            int            plaintext_len,
+            unsigned char *key,
+            unsigned char *iv, 
+            unsigned char *ciphertext, 
+            int            bit_mode)
 {
-  int len;
-  EVP_CIPHER_CTX *ctx = NULL;
+    int len;
+    EVP_CIPHER_CTX *ctx = NULL;
 
-  ctx = EVP_CIPHER_CTX_new();
-  if (ctx == NULL)
-    {
-      ERR_print_errors_fp(stderr);
-      free(key);
-      free(plaintext);
-      free(ciphertext);
-      exit(EXIT_FAILURE);
+    ctx = EVP_CIPHER_CTX_new();
+
+    if (ctx == NULL) return 1;
+
+    switch (bit_mode) {
+        case 128:
+            if (!EVP_EncryptInit_ex(ctx, EVP_aes_128_ecb(), NULL, key, iv)) {
+                EVP_CIPHER_CTX_free(ctx);
+                return 1;
+            }
+            break;
+        case 256:
+            if (!EVP_EncryptInit_ex(ctx, EVP_aes_128_ecb(), NULL, key, iv)) {
+                EVP_CIPHER_CTX_free(ctx);
+                return 1;
+            }
+            break;
+        default:
+            return 1;
     }
 
-  if (bit_mode == 128)
-    {
-      if (!EVP_EncryptInit_ex(ctx, EVP_aes_128_ecb(), NULL, key, iv))
-	{
-	  ERR_print_errors_fp(stderr);
-	  EVP_CIPHER_CTX_free(ctx);
-	  free(key);
-	  free(plaintext);
-	  free(ciphertext);
-	  exit(EXIT_FAILURE);
-	}
-    }
-  else
-    {
-      if (!EVP_EncryptInit_ex(ctx, EVP_aes_256_ecb(), NULL, key, iv))
-	{
-	  ERR_print_errors_fp(stderr);
-	  EVP_CIPHER_CTX_free(ctx);
-	  free(key);
-	  free(plaintext);
-	  free(ciphertext);
-	  exit(EXIT_FAILURE);
-	}
+    if (!EVP_EncryptUpdate(ctx, ciphertext, &len, plaintext, plaintext_len)) {
+        EVP_CIPHER_CTX_free(ctx);
+        return 1;
     }
 
-  if (!EVP_EncryptUpdate(ctx, ciphertext, &len, plaintext, plaintext_len))
-    {
-      ERR_print_errors_fp(stderr);
-      EVP_CIPHER_CTX_free(ctx);
-      free(key);
-      free(plaintext);
-      free(ciphertext);
-      exit(EXIT_FAILURE);
+    if (!EVP_EncryptFinal_ex(ctx, ciphertext + len, &len)) {
+        EVP_CIPHER_CTX_free(ctx);
+        return 1;
     }
 
-  if (!EVP_EncryptFinal_ex(ctx, ciphertext + len, &len))
-    {
-      ERR_print_errors_fp(stderr);
-      EVP_CIPHER_CTX_free(ctx);
-      free(key);
-      free(plaintext);
-      free(ciphertext);
-      exit(EXIT_FAILURE);
-    }
-
-  EVP_CIPHER_CTX_free(ctx);
+    EVP_CIPHER_CTX_free(ctx);
 }
 
 
@@ -514,7 +487,18 @@ main(int argc, char **argv)
 	      }
 
 	    /* Encrypt contents */
-	    encrypt(plaintext, plaintext_len, key, NULL, ciphertext, bit_mode);
+	    if (encrypt(plaintext,
+                        plaintext_len,
+                        key,
+                        NULL,
+                        ciphertext,
+                        bit_mode)) {
+                ERR_print_errors_fp(stderr);
+                free(key);
+                free(plaintext);
+                free(ciphertext);
+                exit(EXIT_FAILURE);
+            }
 
 	    /* Open file to write encrypted contents and close it */
 	    file = fopen(output_file, "w");
