@@ -8,15 +8,15 @@
 #include <openssl/conf.h>
 #include <openssl/cmac.h>
 
+#include "encryptor.h"
+
 #define BLOCK_SIZE 16
 
 
-/* function prototypes */
-void print_hex(unsigned char *, size_t);
-void print_string(unsigned char *, size_t); 
-void usage(void);
+static void print_hex(unsigned char *, size_t);
+static void usage(void);
+
 void check_args(char *, char *, unsigned char *, int, int);
-void keygen(unsigned char *, unsigned char *, unsigned char *, int);
 void encrypt(unsigned char *, int, unsigned char *, unsigned char *, 
     unsigned char *, int );
 int decrypt(unsigned char *, int, unsigned char *, unsigned char *, 
@@ -26,56 +26,25 @@ int verify_cmac(unsigned char *, unsigned char *);
 
 
 
-/* TODO Declare your function prototypes here... */
-
-
-
-/*
- * Prints the hex value of the input
- * 16 values per line
- */
-void
-print_hex(unsigned char *data, size_t len)
+static void print_hex(unsigned char *data, size_t len)
 {
-	size_t i;
+    size_t i;
 
-	if (!data)
-		printf("NULL data\n");
-	else {
-		for (i = 0; i < len; i++) {
-			if (!(i % 16) && (i != 0))
-				printf("\n");
-			printf("%02X ", data[i]);
-		}
-		printf("\n");
-	}
+    if (!data) {
+        printf("NULL data\n");
+    }
+    else {
+        for (i = 0; i < len; i++) {
+            if (!(i % 16) && (i != 0))
+                printf("\n");
+            printf("%02X ", data[i]);
+        }
+        printf("\n");
+    }
 }
 
 
-/*
- * Prints the input as string
- */
-void
-print_string(unsigned char *data, size_t len)
-{
-	size_t i;
-
-	if (!data)
-		printf("NULL data\n");
-	else {
-		for (i = 0; i < len; i++)
-			printf("%c", data[i]);
-		printf("\n");
-	}
-}
-
-
-/*
- * Prints the usage message
- * Describe the usage of the new arguments you introduce
- */
-void
-usage(void)
+static void usage(void)
 {
 	printf(
 	    "\n"
@@ -137,41 +106,31 @@ check_args(char *input_file, char *output_file, unsigned char *password,
 }
 
 
-/*
- * Generates a key using a password
- */
-void
-keygen(unsigned char *password, unsigned char *key, unsigned char *iv,
-    int bit_mode)
+int keygen(unsigned char *password,
+           unsigned char *key,
+           unsigned char *iv,
+           unsigned int   bit_mode)
 {
-  const EVP_CIPHER *cipher = NULL;
-  const EVP_MD *digest = NULL;
+    const EVP_CIPHER *cipher = NULL;
+    const EVP_MD *digest = NULL;
 
-  if (bit_mode == 128)
-    cipher = EVP_aes_128_ecb();
-  else
-    cipher = EVP_aes_256_ecb();
+    if (bit_mode == 128)
+        cipher = EVP_aes_128_ecb();
+    else
+        cipher = EVP_aes_256_ecb();
 
-  if(!cipher)
-    {
-      ERR_print_errors_fp(stderr);
-      exit(EXIT_FAILURE);
-    }
-  
-  digest = EVP_sha1();
-  if(!digest)
-    {
-      ERR_print_errors_fp(stderr);
-      exit(EXIT_FAILURE);
-    }
+    if(!cipher) return 1;
 
-  if (!EVP_BytesToKey(cipher, digest, NULL,
-		     (unsigned char *) password,
-		     strlen((const char *) password), 1, key, iv))
-    {
-      ERR_print_errors_fp(stderr);
-      exit(EXIT_FAILURE);
-    }
+    digest = EVP_sha1();
+
+    if(!digest) return 1;
+
+    if (!EVP_BytesToKey(cipher, digest, NULL,
+                (unsigned char *) password,
+                strlen((const char *) password), 1, key, iv))
+        return 1;
+
+    return 0;
 }
 
 
@@ -506,7 +465,10 @@ main(int argc, char **argv)
 	  }
 
 	/* Generate key */
-	keygen(password, key, NULL, bit_mode);
+        if (keygen(password, key, NULL, bit_mode)) {
+            ERR_print_errors_fp(stderr);
+            exit(EXIT_FAILURE);
+        }
 
 	/* Operate on the data according to the mode */
 	/* encrypt */

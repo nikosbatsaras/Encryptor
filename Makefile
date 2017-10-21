@@ -2,13 +2,13 @@ CC = gcc
 DBUG = -g
 LIBSSL = -lssl -lcrypto
 
-TARGETS = assign_1
+TARGETS = encryptor
 
 
 all: $(TARGETS)
 
-assign_1: assign_1.c
+encryptor: encryptor.c encryptor.h
 	$(CC) $(CCFLAGS) $(DBUG) -o $@ $< $(LIBSSL)
 
 clean:
-	rm -f $(TARGETS)
+	rm -f $(TARGETS) *.o
