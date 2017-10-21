@@ -11,6 +11,11 @@
 #include "encryptor.h"
 #include "util.h"
 
+#define ENCRYPT 0
+#define DECRYPT 1
+#define SIGN    2
+#define VERIFY  3
+
 
 static int   opt;                /* used for command line arguments */
 static char *input_file  = NULL; /* path to the input file          */
@@ -107,8 +112,7 @@ static void toolkit_decrypt(unsigned char *key)
     plaintext =
         (unsigned char *)malloc((ciphertext_len)*sizeof(unsigned char));
 
-    if (plaintext == NULL)
-    {
+    if (plaintext == NULL) {
         fprintf(stderr, "ERROR can not allocate memory for plaintext\n");
         exit(EXIT_FAILURE);
     }
@@ -247,8 +251,7 @@ static void toolkit_verify(unsigned char *key)
     }
 
     /* Check if the cmac's match */
-    if (verify_cmac(cmac, new_cmac))
-    {
+    if (verify_cmac(cmac, new_cmac)) {
         printf("CMACs match\n");
 
         if (!(file = fopen(output_file, "w"))) {
@@ -281,16 +284,16 @@ void toolkit_init(int argc, char *argv[])
                 password = (unsigned char *)strdup(optarg);
                 break;
             case 'e':
-                op_mode = 0;
+                op_mode = ENCRYPT;
                 break;
             case 'd':
-                op_mode = 1;
+                op_mode = DECRYPT;
                 break;
             case 's':
-                op_mode = 2;
+                op_mode = SIGN;
                 break;
             case 'v':
-                op_mode = 3;
+                op_mode = VERIFY;
                 break;
             case 'h':
             default:
@@ -325,16 +328,16 @@ void toolkit_keygen(unsigned char **key)
 void toolkit_run(unsigned char *key)
 {
     switch(op_mode) {
-        case 0:
+        case ENCRYPT:
             toolkit_encrypt(key);
             break;
-        case 1:
+        case DECRYPT:
             toolkit_decrypt(key);
             break;
-        case 2:
+        case SIGN:
             toolkit_sign(key);
             break;
-        case 3:
+        case VERIFY:
             toolkit_verify(key);
             break;
     }
