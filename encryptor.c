@@ -17,7 +17,6 @@ static void usage(void);
 static void print_hex(unsigned char *, size_t);
 static void check_args(char *, char *, unsigned char *, int, int);
 
-void gen_cmac(unsigned char *, size_t, unsigned char *, unsigned char *, int);
 int verify_cmac(unsigned char *, unsigned char *);
 
 
@@ -217,66 +216,46 @@ int decrypt(unsigned char *ciphertext,
 }
 
 
-/*
- * Generates a CMAC
- */
-void
-gen_cmac(unsigned char *data, size_t data_len, unsigned char *key, 
-    unsigned char *cmac, int bit_mode)
+int gen_cmac(unsigned char *plaintext,
+             size_t         plaintext_len,
+             unsigned char *key, 
+             unsigned char *cmac,
+             unsigned int   bit_mode)
 {
-  size_t temp;
-  CMAC_CTX *ctx = NULL;
+    size_t temp;
+    CMAC_CTX *ctx = NULL;
 
-  ctx = CMAC_CTX_new();
-  if (ctx == NULL) {
-    ERR_print_errors_fp(stderr);
-    free(key);
-    free(data);
-    exit(EXIT_FAILURE);
-  }
-  
-  if (bit_mode == 128)
-    {
-      if (!CMAC_Init(ctx, key, 16, EVP_aes_128_ecb(), NULL))
-	{
-	  ERR_print_errors_fp(stderr);
-	  CMAC_CTX_free(ctx);
-	  free(key);
-	  free(data);
-	  exit(EXIT_FAILURE);
-	}
-    }
-  else
-    {
-      if (!CMAC_Init(ctx, key, 32, EVP_aes_256_ecb(), NULL))
-	{
-	  ERR_print_errors_fp(stderr);
-	  CMAC_CTX_free(ctx);
-	  free(key);
-	  free(data);
-	  exit(EXIT_FAILURE);
-	}
+    ctx = CMAC_CTX_new();
+    if (ctx == NULL) return 1;
+
+    switch (bit_mode) {
+        case 128:
+            if (!CMAC_Init(ctx, key, 16, EVP_aes_128_ecb(), NULL)) {
+                CMAC_CTX_free(ctx);
+                return 1;
+            }
+            break;
+        case 256:
+            if (!CMAC_Init(ctx, key, 32, EVP_aes_256_ecb(), NULL)) {
+                CMAC_CTX_free(ctx);
+                return 1;
+            }
+            break;
+        default:
+            return 1;
     }
 
-  if (!CMAC_Update(ctx, data, data_len))
-    {
-      ERR_print_errors_fp(stderr);
-      CMAC_CTX_free(ctx);
-      free(key);
-      free(data);
-      exit(EXIT_FAILURE);
+    if (!CMAC_Update(ctx, data, data_len)) {
+        CMAC_CTX_free(ctx);
+        return 1;
     }
   
-  if (!CMAC_Final(ctx, cmac, &temp))
-    {
-      ERR_print_errors_fp(stderr);
-      CMAC_CTX_free(ctx);
-      free(key);
-      free(data);
-      exit(EXIT_FAILURE);
+    if (!CMAC_Final(ctx, cmac, &temp)) {
+        CMAC_CTX_free(ctx);
+        return 1;
     }
 
-  CMAC_CTX_free(ctx);
+    CMAC_CTX_free(ctx);
 }
 
 
@@ -578,10 +557,22 @@ main(int argc, char **argv)
 	      }
 	
 	    /* Encrypt contents */
-	    encrypt(plaintext, plaintext_len, key, NULL, ciphertext, bit_mode);
+	    if (encrypt(plaintext, plaintext_len, key,
+                        NULL, ciphertext, bit_mode)) {
+                ERR_print_errors_fp(stderr);
+                free(key);
+                free(plaintext);
+                free(ciphertext);
+                exit(EXIT_FAILURE);
+            }
 
 	    /* Generate sign */
-	    gen_cmac(plaintext, plaintext_len, key, cmac, bit_mode);
+            if (gen_cmac(plaintext, plaintext_len, key, cmac, bit_mode)) {
+                ERR_print_errors_fp(stderr);
+                free(key);
+                free(plaintext);
+                exit(EXIT_FAILURE);
+            }
 	    
 	    /* Open file to write encrypted contents and close it */
 	    file = fopen(output_file, "w");
@@ -639,7 +630,12 @@ main(int argc, char **argv)
 				    key, NULL, plaintext, bit_mode);
 
 	    /* Generate new cmac from decrypted text */
-	    gen_cmac(plaintext, plaintext_len, key, new_cmac, bit_mode);
+            if (gen_cmac(plaintext, plaintext_len, key, cmac, bit_mode)) {
+                ERR_print_errors_fp(stderr);
+                free(key);
+                free(plaintext);
+                exit(EXIT_FAILURE);
+            }
 
 	    /* Check if the cmac's match */
 	    if (verify_cmac(cmac, new_cmac))
