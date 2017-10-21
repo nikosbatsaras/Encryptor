@@ -81,6 +81,7 @@ int encrypt(unsigned char *plaintext,
     }
 
     EVP_CIPHER_CTX_free(ctx);
+    return 0;
 }
 
 
@@ -171,6 +172,7 @@ int gen_cmac(unsigned char *plaintext,
     }
 
     CMAC_CTX_free(ctx);
+    return 0;
 }
 
 
