@@ -17,8 +17,6 @@ static void usage(void);
 static void print_hex(unsigned char *, size_t);
 static void check_args(char *, char *, unsigned char *, int, int);
 
-int decrypt(unsigned char *, int, unsigned char *, unsigned char *, 
-    unsigned char *, int);
 void gen_cmac(unsigned char *, size_t, unsigned char *, unsigned char *, int);
 int verify_cmac(unsigned char *, unsigned char *);
 
@@ -69,37 +67,33 @@ static void usage(void)
 }
 
 
-/*
- * Checks the validity of the arguments
- * Check the new arguments you introduce
- */
 static void check_args(char *input_file, char *output_file,
         unsigned char *password, int bit_mode, int op_mode)
 {
-	if (!input_file) {
-		printf("Error: No input file!\n");
-		usage();
-	}
+    if (!input_file) {
+        printf("Error: No input file!\n");
+        usage();
+    }
 
-	if (!output_file) {
-		printf("Error: No output file!\n");
-		usage();
-	}
+    if (!output_file) {
+        printf("Error: No output file!\n");
+        usage();
+    }
 
-	if (!password) {
-		printf("Error: No user key!\n");
-		usage();
-	}
+    if (!password) {
+        printf("Error: No user key!\n");
+        usage();
+    }
 
-	if ((bit_mode != 128) && (bit_mode != 256)) {
-		printf("Error: Bit Mode <%d> is invalid!\n", bit_mode);
-		usage();
-	}
+    if ((bit_mode != 128) && (bit_mode != 256)) {
+        printf("Error: Bit Mode <%d> is invalid!\n", bit_mode);
+        usage();
+    }
 
-	if (op_mode == -1) {
-		printf("Error: No mode\n");
-		usage();
-	}
+    if (op_mode == -1) {
+        printf("Error: No mode\n");
+        usage();
+    }
 }
 
 
@@ -132,11 +126,11 @@ int keygen(unsigned char *password,
 
 
 int encrypt(unsigned char *plaintext,
-            int            plaintext_len,
+            unsigned int   plaintext_len,
             unsigned char *key,
             unsigned char *iv, 
             unsigned char *ciphertext, 
-            int            bit_mode)
+            unsigned int   bit_mode)
 {
     int len;
     EVP_CIPHER_CTX *ctx = NULL;
@@ -153,7 +147,7 @@ int encrypt(unsigned char *plaintext,
             }
             break;
         case 256:
-            if (!EVP_EncryptInit_ex(ctx, EVP_aes_128_ecb(), NULL, key, iv)) {
+            if (!EVP_EncryptInit_ex(ctx, EVP_aes_256_ecb(), NULL, key, iv)) {
                 EVP_CIPHER_CTX_free(ctx);
                 return 1;
             }
@@ -176,75 +170,49 @@ int encrypt(unsigned char *plaintext,
 }
 
 
-/*
- * Decrypts the data and returns the plaintext size
- */
-int
-decrypt(unsigned char *ciphertext, int ciphertext_len, unsigned char *key,
-    unsigned char *iv, unsigned char *plaintext, int bit_mode)
+int decrypt(unsigned char *ciphertext,
+            unsigned int   ciphertext_len,
+            unsigned char *key,
+            unsigned char *iv,
+            unsigned char *plaintext,
+            unsigned int   bit_mode)
 {
-  int plaintext_len, len;
-  EVP_CIPHER_CTX *ctx = NULL;
+    int plaintext_len, len;
+    EVP_CIPHER_CTX *ctx = NULL;
 
-  ctx = EVP_CIPHER_CTX_new();
-  if (ctx == NULL)
-    {
-      ERR_print_errors_fp(stderr);
-      free(key);
-      free(plaintext);
-      free(ciphertext);
-      exit(EXIT_FAILURE);
+    ctx = EVP_CIPHER_CTX_new();
+    if (ctx == NULL) return 0;
+
+    switch (bit_mode) {
+        case 128:
+            if (!EVP_DecryptInit_ex(ctx, EVP_aes_128_ecb(), NULL, key, iv)) {
+                EVP_CIPHER_CTX_free(ctx);
+                return 0;
+            }
+            break;
+        case 256:
+            if (!EVP_DecryptInit_ex(ctx, EVP_aes_256_ecb(), NULL, key, iv)) {
+                EVP_CIPHER_CTX_free(ctx);
+                return 0;
+            }
+            break;
+        default:
+            return 0;
     }
 
-  if (bit_mode == 128)
-    {
-      if (!EVP_DecryptInit_ex(ctx, EVP_aes_128_ecb(), NULL, key, iv))
-	{
-	  ERR_print_errors_fp(stderr);
-	  EVP_CIPHER_CTX_free(ctx);
-	  free(key);
-	  free(plaintext);
-	  free(ciphertext);
-	  exit(EXIT_FAILURE);
-	}
-    }
-  else
-    {
-      if (!EVP_DecryptInit_ex(ctx, EVP_aes_256_ecb(), NULL, key, iv))
-	{
-	  ERR_print_errors_fp(stderr);
-	  EVP_CIPHER_CTX_free(ctx);
-	  free(key);
-	  free(plaintext);
-	  free(ciphertext);
-	  exit(EXIT_FAILURE);
-	}
-    }
-
-  if (!EVP_DecryptUpdate(ctx, plaintext, &len, ciphertext, ciphertext_len))
-    {
-      ERR_print_errors_fp(stderr);
+  if (!EVP_DecryptUpdate(ctx, plaintext, &len, ciphertext, ciphertext_len)) {
       EVP_CIPHER_CTX_free(ctx);
-      free(key);
-      free(plaintext);
-      free(ciphertext);
-      exit(EXIT_FAILURE);
-    }
+      return 0;
+  }
   plaintext_len = len;
 
-  if (!EVP_DecryptFinal_ex(ctx, plaintext + len, &len))
-    {
-      ERR_print_errors_fp(stderr);
+  if (!EVP_DecryptFinal_ex(ctx, plaintext + len, &len)) {
       EVP_CIPHER_CTX_free(ctx);
-      free(key);
-      free(plaintext);
-      free(ciphertext);
-      exit(EXIT_FAILURE);
-    }
+      return 0;
+  }
   plaintext_len += len;
 
   EVP_CIPHER_CTX_free(ctx);
-
   return plaintext_len;
 }
 
@@ -487,12 +455,8 @@ main(int argc, char **argv)
 	      }
 
 	    /* Encrypt contents */
-	    if (encrypt(plaintext,
-                        plaintext_len,
-                        key,
-                        NULL,
-                        ciphertext,
-                        bit_mode)) {
+	    if (encrypt(plaintext, plaintext_len, key,
+                        NULL, ciphertext, bit_mode)) {
                 ERR_print_errors_fp(stderr);
                 free(key);
                 free(plaintext);
@@ -552,6 +516,13 @@ main(int argc, char **argv)
 	    /* Decrypt contents */
 	    plaintext_len = decrypt(ciphertext, ciphertext_len,
 				    key, NULL, plaintext, bit_mode);
+            if (!plaintext_len) {
+                ERR_print_errors_fp(stderr);
+                free(key);
+                free(plaintext);
+                free(ciphertext);
+                exit(EXIT_FAILURE);
+            }
 
 	    /* Open file to write decrypted contents and close it */
 	    file = fopen(output_file, "w");

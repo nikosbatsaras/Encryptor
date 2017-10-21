@@ -7,11 +7,17 @@ int keygen(unsigned char *password,
            unsigned int   bit_mode);
 
 int encrypt(unsigned char *plaintext,
-            int            plaintext_len,
+            unsigned int   plaintext_len,
             unsigned char *key,
             unsigned char *iv, 
             unsigned char *ciphertext, 
-            int            bit_mode);
+            unsigned int   bit_mode);
 
+int decrypt(unsigned char *ciphertext,
+            unsigned int   ciphertext_len,
+            unsigned char *key,
+            unsigned char *iv,
+            unsigned char *plaintext,
+            unsigned int   bit_mode);
 
 #endif /* ENCRYPTOR_H */
