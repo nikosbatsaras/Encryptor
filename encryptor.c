@@ -17,9 +17,6 @@ static void usage(void);
 static void print_hex(unsigned char *, size_t);
 static void check_args(char *, char *, unsigned char *, int, int);
 
-int verify_cmac(unsigned char *, unsigned char *);
-
-
 
 static void print_hex(unsigned char *data, size_t len)
 {
@@ -217,7 +214,7 @@ int decrypt(unsigned char *ciphertext,
 
 
 int gen_cmac(unsigned char *plaintext,
-             size_t         plaintext_len,
+             unsigned int   plaintext_len,
              unsigned char *key, 
              unsigned char *cmac,
              unsigned int   bit_mode)
@@ -245,7 +242,7 @@ int gen_cmac(unsigned char *plaintext,
             return 1;
     }
 
-    if (!CMAC_Update(ctx, data, data_len)) {
+    if (!CMAC_Update(ctx, plaintext, plaintext_len)) {
         CMAC_CTX_free(ctx);
         return 1;
     }
@@ -259,32 +256,13 @@ int gen_cmac(unsigned char *plaintext,
 }
 
 
-/*
- * Verifies a CMAC
- */
-int
-verify_cmac(unsigned char *cmac1, unsigned char *cmac2)
+int verify_cmac(unsigned char *cmac1, unsigned char *cmac2)
 {
-  int verify = 0;
-
-  /* print_hex(cmac1, 16); */
-  /* print_hex(cmac2, 16); */
-
-  verify = memcmp(cmac1, cmac2, 16);
-  if (verify == 0)
-    {
+  if (!memcmp(cmac1, cmac2, 16))
       return 1;
-    }
   else
-    {
       return 0;
-    }
 }
-
-
-
-/* TODO Develop your functions here... */
-
 
 
 /*
@@ -628,6 +606,13 @@ main(int argc, char **argv)
 	    /* Decrypt contents */
 	    plaintext_len = decrypt(ciphertext, ciphertext_len-16,
 				    key, NULL, plaintext, bit_mode);
+            if (!plaintext_len) {
+                ERR_print_errors_fp(stderr);
+                free(key);
+                free(plaintext);
+                free(ciphertext);
+                exit(EXIT_FAILURE);
+            }
 
 	    /* Generate new cmac from decrypted text */
             if (gen_cmac(plaintext, plaintext_len, key, cmac, bit_mode)) {

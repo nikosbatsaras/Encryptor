@@ -21,9 +21,12 @@ int decrypt(unsigned char *ciphertext,
             unsigned int   bit_mode);
 
 int gen_cmac(unsigned char *plaintext,
-             size_t         plaintext_len,
+             unsigned int   plaintext_len,
              unsigned char *key, 
              unsigned char *cmac,
              unsigned int   bit_mode);
+
+int verify_cmac(unsigned char *cmac1,
+                unsigned char *cmac2);
 
 #endif /* ENCRYPTOR_H */
