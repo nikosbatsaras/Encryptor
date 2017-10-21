@@ -1,14 +1,23 @@
 CC = gcc
-DBUG = -g
+CFLAGS = -g -Wall
 LIBSSL = -lssl -lcrypto
+OBJECTS = main.o util.o encryptor.o
 
-TARGETS = encryptor
+.PHONY: all clean
 
+all: encryptor
 
-all: $(TARGETS)
+encryptor: $(OBJECTS)
+	$(CC) $(CFLAGs) -o encryptor $(OBJECTS) $(LIBSSL)
 
-encryptor: encryptor.c encryptor.h
-	$(CC) $(CCFLAGS) $(DBUG) -o $@ $< $(LIBSSL)
+main.o: main.c util.o encryptor.o
+	$(CC) $(CFLAGs) -c main.c $(LIBSSL)
+	
+util.o: util.c util.h
+	$(CC) $(CFLAGs) -c util.c
+
+encryptor.o: util.o encryptor.c encryptor.h
+	$(CC) $(CFLAGs) -c encryptor.c $(LIBSSL)
 
 clean:
-	rm -f $(TARGETS) *.o
+	rm *.o encryptor
