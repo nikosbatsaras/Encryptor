@@ -115,20 +115,20 @@ int decrypt(unsigned char *ciphertext,
             return 0;
     }
 
-  if (!EVP_DecryptUpdate(ctx, plaintext, &len, ciphertext, ciphertext_len)) {
-      EVP_CIPHER_CTX_free(ctx);
-      return 0;
-  }
-  plaintext_len = len;
+    if (!EVP_DecryptUpdate(ctx, plaintext, &len, ciphertext, ciphertext_len)) {
+        EVP_CIPHER_CTX_free(ctx);
+        return 0;
+    }
+    plaintext_len = len;
 
-  if (!EVP_DecryptFinal_ex(ctx, plaintext + len, &len)) {
-      EVP_CIPHER_CTX_free(ctx);
-      return 0;
-  }
-  plaintext_len += len;
+    if (!EVP_DecryptFinal_ex(ctx, plaintext + len, &len)) {
+        EVP_CIPHER_CTX_free(ctx);
+        return 0;
+    }
+    plaintext_len += len;
 
-  EVP_CIPHER_CTX_free(ctx);
-  return plaintext_len;
+    EVP_CIPHER_CTX_free(ctx);
+    return plaintext_len;
 }
 
 
@@ -178,8 +178,8 @@ int gen_cmac(unsigned char *plaintext,
 
 int verify_cmac(unsigned char *cmac1, unsigned char *cmac2)
 {
-  if (!memcmp(cmac1, cmac2, 16))
-      return 1;
+    if (!memcmp(cmac1, cmac2, 16))
+        return 1;
 
-  return 0;
+    return 0;
 }

@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -g -Wall
 LIBSSL = -lssl -lcrypto
-OBJECTS = main.o encryptor.o util.o
+OBJECTS = main.o toolkit.o encryptor.o util.o
 
 .PHONY: all clean
 
@@ -10,8 +10,11 @@ all: encryptor
 encryptor: $(OBJECTS)
 	$(CC) $(CFLAGS) -o encryptor $(OBJECTS) $(LIBSSL)
 
-main.o: main.c encryptor.o util.o
+main.o: main.c toolkit.o
 	$(CC) $(CFLAGS) -c main.c
+
+toolkit.o: toolkit.c toolkit.h encryptor.o util.o
+	$(CC) $(CFLAGS) -c toolkit.c
 	
 encryptor.o: encryptor.c encryptor.h util.o
 	$(CC) $(CFLAGS) -c encryptor.c
