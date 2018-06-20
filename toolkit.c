@@ -51,6 +51,8 @@ static void toolkit_encrypt(unsigned char *key)
 
     if (!plaintext) {
         fprintf(stderr, "ERROR can not allocate memory for plaintext\n");
+	toolkit_exit(key);
+    	fclose(file);
         exit(EXIT_FAILURE);
     }
     fread(plaintext, 1, plaintext_len, file);
@@ -65,20 +67,20 @@ static void toolkit_encrypt(unsigned char *key)
 
     if (!ciphertext) {
         fprintf(stderr, "ERROR can not allocate memory for ciphertext\n");
+	toolkit_exit(key);
         exit(EXIT_FAILURE);
     }
 
     if (encrypt(plaintext, plaintext_len, key,
                 NULL, ciphertext, bit_mode)) {
         ERR_print_errors_fp(stderr);
-        free(key);
-        free(plaintext);
-        free(ciphertext);
+	toolkit_exit(key);
         exit(EXIT_FAILURE);
     }
 
     if (!(file = fopen(output_file, "w"))) {
         fprintf(stderr, "ERROR opening output file for encryption\n");
+	toolkit_exit(key);
         exit(EXIT_FAILURE);
     }
     fwrite(ciphertext, 1, ciphertext_len, file);
@@ -92,6 +94,7 @@ static void toolkit_decrypt(unsigned char *key)
 
     if (!(file = fopen(input_file, "r"))) {
         fprintf(stderr, "ERROR opening input file for encryption\n");
+	toolkit_exit(key);
         exit(EXIT_FAILURE);
     }
 
@@ -104,6 +107,8 @@ static void toolkit_decrypt(unsigned char *key)
 
     if (!ciphertext) {
         fprintf(stderr, "ERROR can not allocate memory for ciphertext\n");
+	toolkit_exit(key);
+    	fclose(file);
         exit(EXIT_FAILURE);
     }
     fread(ciphertext, 1, ciphertext_len, file);
@@ -114,6 +119,7 @@ static void toolkit_decrypt(unsigned char *key)
 
     if (plaintext == NULL) {
         fprintf(stderr, "ERROR can not allocate memory for plaintext\n");
+	toolkit_exit(key);
         exit(EXIT_FAILURE);
     }
 
@@ -122,14 +128,13 @@ static void toolkit_decrypt(unsigned char *key)
 
     if (!plaintext_len) {
         ERR_print_errors_fp(stderr);
-        free(key);
-        free(plaintext);
-        free(ciphertext);
+	toolkit_exit(key);
         exit(EXIT_FAILURE);
     }
 
     if (!(file = fopen(output_file, "w"))) {
         fprintf(stderr, "ERROR opening output file for encryption\n");
+	toolkit_exit(key);
         exit(EXIT_FAILURE);
     }
     fwrite(plaintext, 1, plaintext_len, file);
@@ -144,6 +149,7 @@ static void toolkit_sign(unsigned char *key)
 
     if (!(file = fopen(input_file, "r"))) {
         fprintf(stderr, "ERROR opening input file for signing\n");
+	toolkit_exit(key);
         exit(EXIT_FAILURE);
     }
 
@@ -156,6 +162,8 @@ static void toolkit_sign(unsigned char *key)
 
     if (!plaintext) {
         fprintf(stderr, "ERROR can not allocate memory for plaintext\n");
+	toolkit_exit(key);
+	fclose(file);
         exit(EXIT_FAILURE);
     }
     fread(plaintext, 1, plaintext_len, file);
@@ -170,27 +178,26 @@ static void toolkit_sign(unsigned char *key)
 
     if (!ciphertext) {
         fprintf(stderr, "ERROR can not allocate memory for ciphertext\n");
+	toolkit_exit(key);
         exit(EXIT_FAILURE);
     }
 
     if (encrypt(plaintext, plaintext_len, key,
                 NULL, ciphertext, bit_mode)) {
         ERR_print_errors_fp(stderr);
-        free(key);
-        free(plaintext);
-        free(ciphertext);
+	toolkit_exit(key);
         exit(EXIT_FAILURE);
     }
 
     if (gen_cmac(plaintext, plaintext_len, key, cmac, bit_mode)) {
         ERR_print_errors_fp(stderr);
-        free(key);
-        free(plaintext);
+	toolkit_exit(key);
         exit(EXIT_FAILURE);
     }
 
     if (!(file = fopen(output_file, "w"))) {
         fprintf(stderr, "ERROR opening output file for encryption\n");
+	toolkit_exit(key);
         exit(EXIT_FAILURE);
     }
     fwrite(ciphertext, 1, ciphertext_len, file);
@@ -205,6 +212,7 @@ static void toolkit_verify(unsigned char *key)
 
     if (!(file = fopen(input_file, "r"))) {
         fprintf(stderr, "ERROR opening input file for verification\n");
+	toolkit_exit(key);
         exit(EXIT_FAILURE);
     }
 
@@ -217,6 +225,8 @@ static void toolkit_verify(unsigned char *key)
 
     if (!ciphertext) {
         fprintf(stderr, "ERROR can not allocate memory for ciphertext\n");
+	toolkit_exit(key);
+    	fclose(file);
         exit(EXIT_FAILURE);
     }
     fread(ciphertext, 1, ciphertext_len-16, file);
@@ -228,6 +238,7 @@ static void toolkit_verify(unsigned char *key)
 
     if (!plaintext) {
         fprintf(stderr, "ERROR can not allocate memory for plaintext\n");
+	toolkit_exit(key);
         exit(EXIT_FAILURE);
     }
 
@@ -236,17 +247,14 @@ static void toolkit_verify(unsigned char *key)
 
     if (!plaintext_len) {
         ERR_print_errors_fp(stderr);
-        free(key);
-        free(plaintext);
-        free(ciphertext);
+	toolkit_exit(key);
         exit(EXIT_FAILURE);
     }
 
     /* Generate new cmac from decrypted text */
-    if (gen_cmac(plaintext, plaintext_len, key, cmac, bit_mode)) {
+    if (gen_cmac(plaintext, plaintext_len, key, new_cmac, bit_mode)) {
         ERR_print_errors_fp(stderr);
-        free(key);
-        free(plaintext);
+	toolkit_exit(key);
         exit(EXIT_FAILURE);
     }
 
@@ -256,6 +264,7 @@ static void toolkit_verify(unsigned char *key)
 
         if (!(file = fopen(output_file, "w"))) {
             fprintf(stderr, "ERROR opening output file for decryption\n");
+	    toolkit_exit(key);
             exit(EXIT_FAILURE);
         }
         fwrite(plaintext, 1, plaintext_len, file);
@@ -346,11 +355,11 @@ void toolkit_run(unsigned char *key)
 
 void toolkit_exit(unsigned char *key)
 {
-    free(input_file);
-    free(output_file);
-    free(password);
+    if (input_file)  free(input_file);
+    if (output_file) free(output_file);
+    if (password)    free(password);
 
-    free(key);
-    free(plaintext);
-    free(ciphertext);
+    if (key)         free(key);
+    if (plaintext)   free(plaintext);
+    if (ciphertext)  free(ciphertext);
 }

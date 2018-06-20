@@ -27,8 +27,7 @@ void usage(void)
             "\n"
             "Usage:\n"
             "    encryptor -i in_file -o out_file -p passwd -b bits" 
-            " [-d | -e | -s | -v]\n"
-            "    encryptor -h\n"
+            " [-d | -e | -s | -v] [-h]\n"
           );
     printf(
             "\n"
